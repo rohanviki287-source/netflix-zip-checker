@@ -198,6 +198,13 @@ def handle_document(update, context):
                     # Read cookie from file
                     with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read().strip()
+                        # Debug - send first file content
+if i == 1:
+    context.bot.send_message(
+        chat_id=chat_id,
+        text=f"DEBUG first file:\n<code>{repr(content[:500])}</code>",
+        parse_mode=ParseMode.HTML
+    )
 
                     if not content:
                         errors += 1
