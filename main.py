@@ -19,12 +19,24 @@ def extract_cookie_from_text(text):
     # .netflix.com TRUE / TRUE 1813718553 NetflixId value
     for line in text.splitlines():
         line = line.strip()
+        if not line or line.startswith("#"):
+            continue
         parts = line.split("\t")
         if len(parts) >= 7:
             name = parts[5].strip()
             value = parts[6].strip()
             if name in COOKIE_KEYS:
                 cookie_dict[name] = value
+        # Also try splitting by multiple spaces
+        elif "\t" not in line:
+            for key in COOKIE_KEYS:
+                if key in line:
+                    # Find key in line and get value after it
+                    idx = line.find(key)
+                    if idx >= 0:
+                        rest = line[idx + len(key):].strip()
+                        if rest:
+                            cookie_dict[key] = rest.split()[0]
 
     # Method 2: JSON format
     if not cookie_dict:
@@ -48,7 +60,7 @@ def extract_cookie_from_text(text):
             if match:
                 cookie_dict[key] = match.group(1)
 
-    # Build cookie string
+    # Build cookie string like NetflixId=value; SecureNetflixId=value
     if cookie_dict:
         parts = []
         for key in COOKIE_KEYS:
