@@ -8,7 +8,7 @@ import urllib.parse
 from telegram.ext import Updater, MessageHandler, Filters
 from telegram import ParseMode
 
-BOT_TOKEN = os.environ["8746565445:AAHCDm9q_qjivhucFMm_qhAlRJnBLI2NmAg"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
 SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
 
 def extract_cookie_from_text(text):
