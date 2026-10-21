@@ -73,10 +73,10 @@ def extract_cookie_from_text(text):
 def check_cookie(cookie_raw):
     try:
         response = requests.get(
-            SCRAPE_URL,
-            params={"cookie": cookie_raw},
-            timeout=60
-        )
+    SCRAPE_URL,
+    params={"cookie": cookie_raw},
+    timeout=120
+)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
