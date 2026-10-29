@@ -173,13 +173,12 @@ def handle_document(update, context):
 
                     cookie_raw = extract_cookie_from_text(content)
 
-                    if not cookie_raw:
-                        errors += 1
-                        context.bot.send_message(
-                            chat_id=chat_id,
-                            text=f"⚠️ <b>{i}/{total}</b> - <code>{filename}</code>\nCould not extract cookie",
-                            parse_mode=ParseMode.HTML
-                        )
+                    if i == 1:
+    context.bot.send_message(
+        chat_id=chat_id,
+        text=f"Cookie extracted:\n<code>{cookie_raw[:200]}</code>",
+        parse_mode=ParseMode.HTML
+    )
                         continue
 
                     if i % 5 == 0 or i == 1:
