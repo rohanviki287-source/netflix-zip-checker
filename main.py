@@ -50,12 +50,12 @@ def extract_cookie_from_text(text):
     return ""
 
 def check_cookie(cookie_raw):
-    if i == 1:
-    context.bot.send_message(
-        chat_id=chat_id,
-        text=f"Cookie extracted:\n<code>{cookie_raw[:200]}</code>",
-        parse_mode=ParseMode.HTML
-    )
+    try:
+        response = requests.get(
+            SCRAPE_URL,
+            params={"cookie": cookie_raw},
+            timeout=120
+        )
         return response.json()
     except Exception as e:
         return {"error": str(e)}
