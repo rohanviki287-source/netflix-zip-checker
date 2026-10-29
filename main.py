@@ -98,7 +98,7 @@ def format_result(d, index, total, filename):
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookie Checker Botiu</b>\n\n"
+        "👋 <b>Netflix Cookiesd Checker Botiu</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
         "I will check eaach account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
