@@ -171,8 +171,7 @@ def handle_document(update, context):
                         errors += 1
                         continue
 
-                    cookie_raw = extract_cookie_from_text(content)
-
+                    cookie_raw = extract_cookie_from_text(content):
                     if i == 1:
     context.bot.send_message(
         chat_id=chat_id,
