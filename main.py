@@ -1,3 +1,18 @@
+from flask import Flask, request as flask_request
+import threading
+
+flask_app = Flask(__name__)
+
+@flask_app.route("/test", methods=["GET"])
+def test():
+    text = flask_request.args.get("text", "")
+    result = extract_cookie_from_text(text)
+    return f"Extracted: {result}"
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=8080)
+
+threading.Thread(target=run_flask, daemon=True).start()
 import os
 import re
 import json
