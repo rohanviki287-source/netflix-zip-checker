@@ -15,49 +15,32 @@ COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 def extract_cookie_from_text(text):
     cookie_dict = {}
 
-    # Method 1: Netscape tab-separated format
+    # Search line by line for cookie keys
     for line in text.splitlines():
-        parts = line.split("\t")
-        if len(parts) >= 7:
-            name = parts[5].strip()
-            value = parts[6].strip()
-            if name in COOKIE_KEYS:
-                cookie_dict[name] = value
-        # Also try with 6 parts (some formats skip a column)
-        elif len(parts) == 6:
-            name = parts[4].strip()
-            value = parts[5].strip()
-            if name in COOKIE_KEYS:
-                cookie_dict[name] = value
-
-    # Method 2: Find NetflixId directly anywhere in text
-    if "NetflixId" not in cookie_dict:
-        for line in text.splitlines():
-            line = line.strip()
-            if "NetflixId" in line:
-                # Split by tab and find NetflixId position
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check each cookie key
+        for key in COOKIE_KEYS:
+            if key in line:
+                # Split by tab
                 parts = line.split("\t")
+                # Find the key position and get value after it
                 for i, part in enumerate(parts):
-                    if part.strip() == "NetflixId" and i + 1 < len(parts):
-                        cookie_dict["NetflixId"] = parts[i + 1].strip()
-                        break
-            if "SecureNetflixId" in line:
-                parts = line.split("\t")
-                for i, part in enumerate(parts):
-                    if part.strip() == "SecureNetflixId" and i + 1 < len(parts):
-                        cookie_dict["SecureNetflixId"] = parts[i + 1].strip()
-                        break
-            if "nfvdid" in line:
-                parts = line.split("\t")
-                for i, part in enumerate(parts):
-                    if part.strip() == "nfvdid" and i + 1 < len(parts):
-                        cookie_dict["nfvdid"] = parts[i + 1].strip()
+                    if part.strip() == key:
+                        if i + 1 < len(parts):
+                            value = parts[i + 1].strip()
+                            if value:
+                                cookie_dict[key] = value
                         break
 
-    # Method 3: key=value format
+    # Method 2: key=value format
     if not cookie_dict:
         for key in COOKIE_KEYS:
-            match = re.search(rf"(?<!\w){re.escape(key)}=([^;,\n\r\s]+)", text)
+            match = re.search(
+                rf"(?<!\w){re.escape(key)}=([^;,\n\r\s]+)", text
+            )
             if match:
                 cookie_dict[key] = match.group(1)
 
