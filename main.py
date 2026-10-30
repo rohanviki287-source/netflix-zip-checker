@@ -26,26 +26,30 @@ def run_flask():
 threading.Thread(target=run_flask, daemon=True).start()
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
-WAKE_URL = "https://netflix-checker-3pev.onrender.com/"
+SCRAPE_URL = "https://net-3pev.onrender.com//scrape"
+WAKE_URL = "https://net-3pev.onrender.com/"
 
-COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
 # Store pending sessions
 pending_sessions = {}
 
-def wake_up_server(retries=6):
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+}
+
+def wake_up_server(retries=5):
+    time.sleep(45)  # give the free instance time to actually finish booting before the first check
     for i in range(retries):
         try:
-            r = requests.get(WAKE_URL, timeout=100)
+            r = requests.get(WAKE_URL, headers=headers, timeout=100)
             log.info(f"Wake attempt {i+1}: status {r.status_code}")
             if r.status_code != 429:
                 return True
-            log.warning("Got 429 (still spinning up), retrying...")
-            time.sleep(10)
+            log.warning("Got 429, waiting longer before retry...")
+            time.sleep(30)  # much longer gap
         except Exception as e:
             log.warning(f"Wake attempt {i+1} failed: {e}")
-            time.sleep(10)
+            time.sleep(30)
     return False
 
 # 1) Wake it when the bot script starts
