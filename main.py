@@ -12,6 +12,44 @@ SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
 
 COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
+def wake_up_server():
+    try:
+        requests.get("https://netflix-checker-3pev.onrender.com/withdraw?cookie=test", timeout=60)
+        return True
+    except:
+        return False
+
+def handle_document(update, context):
+    doc = update.message.document
+
+    if not doc.file_name.lower().endswith(".zip"):
+        return
+
+    chat_id = update.message.chat_id
+
+    # Wake up the scrape server first
+    wake_msg = context.bot.send_message(
+        chat_id=chat_id,
+        text="⏳ <b>Waking up server...</b>\nPlease wait 30-60 seconds...",
+        parse_mode=ParseMode.HTML
+    )
+
+    wake_up_server()
+
+    context.bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=wake_msg.message_id,
+        text="✅ <b>Server is awake!</b>\n📦 Now processing your ZIP file...",
+        parse_mode=ParseMode.HTML
+    )
+
+    # Continue with rest of the code...
+    progress_msg = context.bot.send_message(
+        chat_id=chat_id,
+        text="📦 <b>ZIP file detected!</b>\n⏳ Downloading and extracting...",
+        parse_mode=ParseMode.HTML
+    )
+
 def extract_cookie_from_text(text):
     # Find the line containing NetflixId in Netscape format
     # Format: .netflix.com TRUE / TRUE 1234567 NetflixId VALUE
