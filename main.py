@@ -13,43 +13,37 @@ SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
 COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
 def extract_cookie_from_text(text):
-    cookie_dict = {}
-
-    # Method 1: Netscape tab format - find key then take REST of line as value
+    # Find the line containing NetflixId in Netscape format
+    # Format: .netflix.com TRUE / TRUE 1234567 NetflixId VALUE
     for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        parts = line.split("\t")
-        for i, part in enumerate(parts):
-            if part.strip() in COOKIE_KEYS:
-                key = part.strip()
-                # Take everything after the key tab as value
-                if i + 1 < len(parts):
-                    # Join remaining parts in case value has tabs
-                    value = "\t".join(parts[i+1:]).strip()
-                    if value:
-                        cookie_dict[key] = value
-                break
-
-    # Method 2: key=value format
-    if not cookie_dict:
-        for key in COOKIE_KEYS:
-            match = re.search(
-                rf"(?<!\w){re.escape(key)}=([^\n\r]+)", text
-            )
-            if match:
-                cookie_dict[key] = match.group(1).strip()
-
-    # Build cookie string
-    if "NetflixId" in cookie_dict:
-        cookie_str = f"NetflixId={cookie_dict['NetflixId']}"
-        if "SecureNetflixId" in cookie_dict:
-            cookie_str += f"; SecureNetflixId={cookie_dict['SecureNetflixId']}"
-        if "nfvdid" in cookie_dict:
-            cookie_str += f"; nfvdid={cookie_dict['nfvdid']}"
-        return cookie_str
-
+        if "NetflixId" in line and "\t" in line:
+            parts = line.split("\t")
+            for i, part in enumerate(parts):
+                if part.strip() == "NetflixId":
+                    if i + 1 < len(parts):
+                        value = parts[i + 1].strip()
+                        if value:
+                            # Build cookie string
+                            cookie_str = f"NetflixId={value}"
+                            # Also look for SecureNetflixId
+                            for line2 in text.splitlines():
+                                if "SecureNetflixId" in line2 and "\t" in line2:
+                                    parts2 = line2.split("\t")
+                                    for j, p in enumerate(parts2):
+                                        if p.strip() == "SecureNetflixId":
+                                            if j + 1 < len(parts2):
+                                                cookie_str += f"; SecureNetflixId={parts2[j+1].strip()}"
+                                            break
+                            # Also look for nfvdid
+                            for line3 in text.splitlines():
+                                if "nfvdid" in line3 and "\t" in line3:
+                                    parts3 = line3.split("\t")
+                                    for k, p in enumerate(parts3):
+                                        if p.strip() == "nfvdid":
+                                            if k + 1 < len(parts3):
+                                                cookie_str += f"; nfvdid={parts3[k+1].strip()}"
+                                            break
+                            return cookie_str
     return ""
 
 def check_cookie(cookie_raw):
