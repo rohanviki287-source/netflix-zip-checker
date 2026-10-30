@@ -8,6 +8,9 @@ import threading
 from flask import Flask
 from telegram.ext import Updater, MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
+import time, logging, threading, requests
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 # Flask app to keep port open on Render
 flask_app = Flask(__name__)
@@ -31,12 +34,19 @@ COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 # Store pending sessions
 pending_sessions = {}
 
-def wake_up_server():
-    try:
-        requests.get(WAKE_URL, timeout=60)
-        return True
-    except:
-        return False
+def wake_up_server(retries=4):
+    for i in range(retries):
+        try:
+            r = requests.get(WAKE_URL, timeout=100)
+            log.info(f"Wake attempt {i+1}: status {r.status_code}")
+            return True   # any response (even 404) means it's awake
+        except Exception as e:
+            log.warning(f"Wake attempt {i+1} failed: {e}")
+            time.sleep(5)
+    return False
+
+# 1) Wake it when the bot script starts
+threading.Thread(target=wake_up_server, daemon=True).start()
 
 def extract_cookie_from_text(text):
     for line in text.splitlines():
