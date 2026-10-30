@@ -27,7 +27,7 @@ threading.Thread(target=run_flask, daemon=True).start()
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
-WAKE_URL = "https://netflix-checker-3pev.onrender.com/withdraw?cookie=test"
+WAKE_URL = "https://netflix-checker-3pev.onrender.com/"
 
 COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
