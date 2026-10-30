@@ -45,7 +45,7 @@ threading.Thread(target=run_flask, daemon=True).start()
 # ---------------------------------------------------------------------------
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 
-BASE_URL = "https://net-3pev.onrender.com"
+BASE_URL = "https://netflix-checker-3pev.onrender.com"
 WAKE_URL = f"{BASE_URL}/"
 SCRAPE_URL = f"{BASE_URL}/scrape"
 
