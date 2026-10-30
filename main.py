@@ -48,9 +48,9 @@ def extract_cookie_from_text(text):
 
 def check_cookie(cookie_raw):
     try:
-        response = requests.get(
+        response = requests.post(
             SCRAPE_URL,
-            params={"cookie": cookie_raw},
+            data={"cookie": cookie_raw},
             timeout=120
         )
         return response.json()
