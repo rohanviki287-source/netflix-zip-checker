@@ -15,30 +15,33 @@ COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 def extract_cookie_from_text(text):
     cookie_dict = {}
 
-    # Search line by line for cookie keys
+    # Method 1: Netscape tab format - find key then take REST of line as value
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
-        for key in COOKIE_KEYS:
-            if key in line:
-                parts = line.split("\t")
-                for i, part in enumerate(parts):
-                    if part.strip() == key:
-                        if i + 1 < len(parts):
-                            value = parts[i + 1].strip()
-                            if value:
-                                cookie_dict[key] = value
-                        break
+        parts = line.split("\t")
+        for i, part in enumerate(parts):
+            if part.strip() in COOKIE_KEYS:
+                key = part.strip()
+                # Take everything after the key tab as value
+                if i + 1 < len(parts):
+                    # Join remaining parts in case value has tabs
+                    value = "\t".join(parts[i+1:]).strip()
+                    if value:
+                        cookie_dict[key] = value
+                break
 
     # Method 2: key=value format
     if not cookie_dict:
         for key in COOKIE_KEYS:
-            match = re.search(rf"(?<!\w){re.escape(key)}=([^;,\n\r\s]+)", text)
+            match = re.search(
+                rf"(?<!\w){re.escape(key)}=([^\n\r]+)", text
+            )
             if match:
-                cookie_dict[key] = match.group(1)
+                cookie_dict[key] = match.group(1).strip()
 
-    # Build cookie string - just use NetflixId=value format
+    # Build cookie string
     if "NetflixId" in cookie_dict:
         cookie_str = f"NetflixId={cookie_dict['NetflixId']}"
         if "SecureNetflixId" in cookie_dict:
