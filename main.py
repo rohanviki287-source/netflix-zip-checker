@@ -4,8 +4,23 @@ import json
 import zipfile
 import requests
 import tempfile
+import threading
+from flask import Flask
 from telegram.ext import Updater, MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram import ParseMode, InlineKeyboardButton, InlineKeyboardMarkup
+
+# Flask app to keep port open on Render
+flask_app = Flask(__name__)
+
+@flask_app.route("/")
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
+# Start Flask in background thread
+threading.Thread(target=run_flask, daemon=True).start()
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 SCRAPE_URL = "https://netflix-checker-3pev.onrender.com/scrape"
