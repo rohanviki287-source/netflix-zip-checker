@@ -233,7 +233,7 @@ def process_files(context, chat_id, progress_msg, files_to_check):
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookie CheckerV54 Bot</b>\n\n"
+        "👋 <b>Netflix Cookie CheckerV512 Bot</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
         "I will check each account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
