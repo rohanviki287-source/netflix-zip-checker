@@ -34,15 +34,18 @@ COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 # Store pending sessions
 pending_sessions = {}
 
-def wake_up_server(retries=4):
+def wake_up_server(retries=6):
     for i in range(retries):
         try:
             r = requests.get(WAKE_URL, timeout=100)
             log.info(f"Wake attempt {i+1}: status {r.status_code}")
-            return True   # any response (even 404) means it's awake
+            if r.status_code != 429:
+                return True
+            log.warning("Got 429 (still spinning up), retrying...")
+            time.sleep(10)
         except Exception as e:
             log.warning(f"Wake attempt {i+1} failed: {e}")
-            time.sleep(5)
+            time.sleep(10)
     return False
 
 # 1) Wake it when the bot script starts
