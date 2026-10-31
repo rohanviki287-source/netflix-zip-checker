@@ -68,7 +68,6 @@ def extract_cookie_from_text(text):
     return ""
 
 def parse_filename(filename):
-    """Parse filename like [Premium] [1 payments] [extra false] [IN] [email@gmail.com]"""
     info = {
         "plan": None,
         "payments": None,
@@ -76,7 +75,6 @@ def parse_filename(filename):
         "skip": False
     }
 
-    # Extract all bracket contents
     brackets = re.findall(r'\[([^\]]+)\]', filename)
 
     if not brackets:
@@ -101,6 +99,10 @@ def parse_filename(filename):
 
     # Skip if 0 payments
     if info["payments"] is not None and info["payments"] == 0:
+        info["skip"] = True
+
+    # Skip if has brackets but NO plan found ([] means expired/no plan)
+    if brackets and info["plan"] is None:
         info["skip"] = True
 
     return info
@@ -233,7 +235,7 @@ def process_files(context, chat_id, progress_msg, files_to_check):
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookie CheckerV512 Bot</b>\n\n"
+        "👋 <b>Netflix Cookie CheckerV51124 Bot</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
         "I will check each account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
