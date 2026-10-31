@@ -149,9 +149,9 @@ def process_files(context, chat_id, progress_msg, files_to_check):
     errors = 0
     stop_flags[chat_id] = False
 
-    # Send stop button
+    # Send stop button message
     try:
-        context.bot.send_message(
+        stop_msg = context.bot.send_message(
             chat_id=chat_id,
             text="🔴 <b>Checking in progress...</b>",
             parse_mode=ParseMode.HTML,
@@ -160,7 +160,7 @@ def process_files(context, chat_id, progress_msg, files_to_check):
             ]])
         )
     except:
-        pass
+        stop_msg = None
 
     for i, (txt_path, filename) in enumerate(files_to_check, 1):
         if stop_flags.get(chat_id):
@@ -183,6 +183,12 @@ def process_files(context, chat_id, progress_msg, files_to_check):
                 )
             except:
                 pass
+            # Delete stop button
+            if stop_msg:
+                try:
+                    context.bot.delete_message(chat_id=chat_id, message_id=stop_msg.message_id)
+                except:
+                    pass
             return
 
         try:
@@ -238,7 +244,14 @@ def process_files(context, chat_id, progress_msg, files_to_check):
             errors += 1
             continue
 
-    # Final summary with retry button
+    # Delete stop button message
+    if stop_msg:
+        try:
+            context.bot.delete_message(chat_id=chat_id, message_id=stop_msg.message_id)
+        except:
+            pass
+
+    # Final summary with retry button at the very end
     try:
         context.bot.edit_message_text(
             chat_id=chat_id,
@@ -261,7 +274,7 @@ def process_files(context, chat_id, progress_msg, files_to_check):
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookie Checker553 Bot</b>\n\n"
+        "👋 <b>Netflix Cookie Checker55123 Bot</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
         "I will check each account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
