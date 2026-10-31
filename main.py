@@ -19,7 +19,6 @@ def home():
 def run_flask():
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
 
-# Start Flask in background thread
 threading.Thread(target=run_flask, daemon=True).start()
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
@@ -28,8 +27,8 @@ WAKE_URL = "https://netflix-checker-3pev.onrender.com/withdraw?cookie=test"
 
 COOKIE_KEYS = ["NetflixId", "SecureNetflixId", "nfvdid", "OptanonConsent"]
 
-# Store pending sessions
 pending_sessions = {}
+stop_flags = {}
 
 def wake_up_server():
     try:
@@ -78,30 +77,24 @@ def parse_filename(filename):
     brackets = re.findall(r'\[([^\]]+)\]', filename)
 
     if not brackets:
-        # Random filename like 123456.txt - don't skip
         return info
 
     for b in brackets:
         b_lower = b.lower()
 
-        # Payment count
         payment_match = re.search(r'(\d+)\s*payment', b_lower)
         if payment_match:
             info["payments"] = int(payment_match.group(1))
 
-        # Plan
         if b_lower in ["premium", "standard", "basic", "mobile", "standard with ads"]:
             info["plan"] = b.lower()
 
-        # Country code (2 letter uppercase)
         if re.match(r'^[A-Z]{2}$', b):
             info["country"] = b
 
-    # Skip if 0 payments
     if info["payments"] is not None and info["payments"] == 0:
         info["skip"] = True
 
-    # Skip if has brackets but NO plan found ([] means expired/no plan)
     if brackets and info["plan"] is None:
         info["skip"] = True
 
@@ -154,8 +147,44 @@ def process_files(context, chat_id, progress_msg, files_to_check):
     active = 0
     expired = 0
     errors = 0
+    stop_flags[chat_id] = False
+
+    # Send stop button
+    try:
+        context.bot.send_message(
+            chat_id=chat_id,
+            text="🔴 <b>Checking in progress...</b>",
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🛑 Stop", callback_data=f"stop_{chat_id}")
+            ]])
+        )
+    except:
+        pass
 
     for i, (txt_path, filename) in enumerate(files_to_check, 1):
+        if stop_flags.get(chat_id):
+            try:
+                context.bot.edit_message_text(
+                    chat_id=chat_id,
+                    message_id=progress_msg.message_id,
+                    text=(
+                        f"🛑 <b>Stopped by user!</b>\n\n"
+                        f"📊 <b>Summary so far:</b>\n"
+                        f"✅ Active: <b>{active}</b>\n"
+                        f"❌ Expired: <b>{expired}</b>\n"
+                        f"⚠️ Errors: <b>{errors}</b>\n"
+                        f"📦 Checked: <b>{i-1}/{total}</b>"
+                    ),
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton("🔄 Retry Same ZIP", callback_data=f"retry_{chat_id}")
+                    ]])
+                )
+            except:
+                pass
+            return
+
         try:
             with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read().strip()
@@ -168,11 +197,6 @@ def process_files(context, chat_id, progress_msg, files_to_check):
 
             if not cookie_raw:
                 errors += 1
-                context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"⚠️ <b>{i}/{total}</b> - <code>{filename}</code>\nCould not extract cookie",
-                    parse_mode=ParseMode.HTML
-                )
                 continue
 
             if i % 5 == 0 or i == 1:
@@ -180,7 +204,10 @@ def process_files(context, chat_id, progress_msg, files_to_check):
                     context.bot.edit_message_text(
                         chat_id=chat_id,
                         message_id=progress_msg.message_id,
-                        text=f"⏳ Checking <b>{i}/{total}</b>...\n✅ Active: {active} | ❌ Expired: {expired} | ⚠️ Errors: {errors}",
+                        text=(
+                            f"⏳ Checking <b>{i}/{total}</b>...\n"
+                            f"✅ Active: {active} | ❌ Expired: {expired} | ⚠️ Errors: {errors}"
+                        ),
                         parse_mode=ParseMode.HTML
                     )
                 except:
@@ -190,11 +217,6 @@ def process_files(context, chat_id, progress_msg, files_to_check):
 
             if "error" in result:
                 errors += 1
-                context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"❌ <b>{i}/{total}</b> - <code>{filename}</code>\nError: {result['error']}",
-                    parse_mode=ParseMode.HTML
-                )
                 continue
 
             status = result.get("status", "")
@@ -216,26 +238,30 @@ def process_files(context, chat_id, progress_msg, files_to_check):
             errors += 1
             continue
 
+    # Final summary with retry button
     try:
         context.bot.edit_message_text(
             chat_id=chat_id,
             message_id=progress_msg.message_id,
             text=(
                 f"✅ <b>Checking Complete!</b>\n\n"
-                f"📊 <b>Summary:</b>\n"
+                f"📊 <b>Final Summary:</b>\n"
                 f"✅ Active: <b>{active}</b>\n"
                 f"❌ Expired: <b>{expired}</b>\n"
                 f"⚠️ Errors: <b>{errors}</b>\n"
-                f"📦 Total: <b>{total}</b>"
+                f"📦 Total Checked: <b>{total}</b>"
             ),
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("🔄 Retry Same ZIP", callback_data=f"retry_{chat_id}")
+            ]])
         )
     except:
         pass
 
 def handle_start(update, context):
     update.message.reply_text(
-        "👋 <b>Netflix Cookie CheckerV51124 Bot</b>\n\n"
+        "👋 <b>Netflix Cookie Checker553 Bot</b>\n\n"
         "📦 Just send me a <b>ZIP file</b> containing Netflix cookie .txt files\n"
         "I will check each account automatically!\n\n"
         "✅ Shows: Status, Plan, Payment, Email, Profiles and more!",
@@ -250,7 +276,6 @@ def handle_document(update, context):
 
     chat_id = update.message.chat_id
 
-    # Wake up server
     wake_msg = context.bot.send_message(
         chat_id=chat_id,
         text="⏳ <b>Waking up server...</b>\nPlease wait 30-60 seconds...",
@@ -275,14 +300,12 @@ def handle_document(update, context):
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(tmpdir)
 
-        # Find all txt files
         all_files = []
         for root, dirs, files in os.walk(tmpdir):
             for f in files:
                 if f.lower().endswith(".txt"):
                     all_files.append((os.path.join(root, f), f))
 
-        # Filter files
         valid_files = []
         skipped = 0
         plans_found = set()
@@ -304,12 +327,11 @@ def handle_document(update, context):
         if total_valid == 0:
             context.bot.send_message(
                 chat_id=chat_id,
-                text=f"❌ No valid cookies found!\n⏭ Skipped {skipped} files with 0 payments.",
+                text=f"❌ No valid cookies found!\n⏭ Skipped <b>{skipped}</b> files (0 payments or no plan).",
                 parse_mode=ParseMode.HTML
             )
             return
 
-        # Store session data
         pending_sessions[chat_id] = {
             "valid_files": valid_files,
             "tmpdir": tmpdir,
@@ -318,14 +340,13 @@ def handle_document(update, context):
             "countries": list(countries_found)
         }
 
-        # Show summary and ask filter
         plans_str = ", ".join([p.title() for p in plans_found]) if plans_found else "Mixed"
-        countries_str = ", ".join(countries_found) if countries_found else "Mixed"
+        countries_str = ", ".join(sorted(countries_found)) if countries_found else "Mixed"
 
         summary = (
             f"📊 <b>ZIP Summary:</b>\n\n"
             f"✅ Valid files: <b>{total_valid}</b>\n"
-            f"⏭ Skipped (0 payments): <b>{skipped}</b>\n"
+            f"⏭ Skipped: <b>{skipped}</b> (0 payments or no plan)\n"
             f"👑 Plans: <b>{plans_str}</b>\n"
             f"🌍 Countries: <b>{countries_str}</b>\n\n"
             f"Do you want to filter by Plan/Country?"
@@ -356,18 +377,70 @@ def handle_document(update, context):
             parse_mode=ParseMode.HTML
         )
 
+def filter_files(session, plan, country):
+    valid_files = session["valid_files"]
+    result = []
+    for txt_path, filename, info in valid_files:
+        if plan != "all" and info["plan"] and info["plan"] != plan:
+            continue
+        if country and country != "all" and info["country"] and info["country"] != country:
+            continue
+        result.append((txt_path, filename))
+    return result
+
 def handle_callback(update, context):
     query = update.callback_query
     query.answer()
     chat_id = query.message.chat_id
     data = query.data
 
+    # Stop checking
+    if data.startswith("stop_"):
+        stop_flags[chat_id] = True
+        query.edit_message_text(
+            "🛑 <b>Stopping after current check...</b>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    # Retry same ZIP
+    if data.startswith("retry_"):
+        session = pending_sessions.get(chat_id)
+        if not session:
+            query.edit_message_text("❌ Session expired. Send ZIP again.")
+            return
+
+        plans = session.get("plans", [])
+        countries = session.get("countries", [])
+        plans_str = ", ".join([p.title() for p in plans]) if plans else "Mixed"
+        countries_str = ", ".join(sorted(countries)) if countries else "Mixed"
+
+        summary = (
+            f"📊 <b>ZIP Summary:</b>\n\n"
+            f"✅ Valid files: <b>{len(session['valid_files'])}</b>\n"
+            f"⏭ Skipped: <b>{session.get('skipped', 0)}</b>\n"
+            f"👑 Plans: <b>{plans_str}</b>\n"
+            f"🌍 Countries: <b>{countries_str}</b>\n\n"
+            f"Do you want to filter by Plan/Country?"
+        )
+
+        buttons = InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ Yes, Filter", callback_data=f"filter_yes_{chat_id}"),
+            InlineKeyboardButton("❌ No, Check All", callback_data=f"filter_no_{chat_id}")
+        ]])
+
+        query.edit_message_text(
+            summary,
+            parse_mode=ParseMode.HTML,
+            reply_markup=buttons
+        )
+        return
+
     session = pending_sessions.get(chat_id)
     if not session:
         query.edit_message_text("❌ Session expired. Please send ZIP again.")
         return
 
-    # No filter - check all
     if data.startswith("filter_no_"):
         files_to_check = [(f[0], f[1]) for f in session["valid_files"]]
         query.edit_message_text(
@@ -379,20 +452,25 @@ def handle_callback(update, context):
             text="⏳ Starting...",
             parse_mode=ParseMode.HTML
         )
-        process_files(context, chat_id, progress_msg, files_to_check)
+        threading.Thread(
+            target=process_files,
+            args=(context, chat_id, progress_msg, files_to_check)
+        ).start()
 
-    # Yes filter - show plans
     elif data.startswith("filter_yes_"):
         plans = session.get("plans", [])
         if not plans:
-            query.edit_message_text("No plan info found in filenames. Checking all...")
+            query.edit_message_text("No plan info found. Checking all...")
             files_to_check = [(f[0], f[1]) for f in session["valid_files"]]
             progress_msg = context.bot.send_message(
                 chat_id=chat_id,
                 text="⏳ Starting...",
                 parse_mode=ParseMode.HTML
             )
-            process_files(context, chat_id, progress_msg, files_to_check)
+            threading.Thread(
+                target=process_files,
+                args=(context, chat_id, progress_msg, files_to_check)
+            ).start()
             return
 
         buttons = []
@@ -412,7 +490,6 @@ def handle_callback(update, context):
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    # Plan selected - show countries
     elif data.startswith("plan_"):
         parts = data.split("_")
         plan = parts[1]
@@ -420,10 +497,9 @@ def handle_callback(update, context):
 
         countries = session.get("countries", [])
         if not countries:
-            # No country info - proceed to check
             files_to_check = filter_files(session, plan, None)
             query.edit_message_text(
-                f"✅ Checking <b>{len(files_to_check)}</b> cookies with plan: <b>{plan.title()}</b>...",
+                f"✅ Checking <b>{len(files_to_check)}</b> cookies\n👑 Plan: <b>{plan.title()}</b>",
                 parse_mode=ParseMode.HTML
             )
             progress_msg = context.bot.send_message(
@@ -431,7 +507,10 @@ def handle_callback(update, context):
                 text="⏳ Starting...",
                 parse_mode=ParseMode.HTML
             )
-            process_files(context, chat_id, progress_msg, files_to_check)
+            threading.Thread(
+                target=process_files,
+                args=(context, chat_id, progress_msg, files_to_check)
+            ).start()
             return
 
         buttons = []
@@ -446,12 +525,11 @@ def handle_callback(update, context):
         buttons.append([InlineKeyboardButton("🌍 All Countries", callback_data=f"country_all_{chat_id}")])
 
         query.edit_message_text(
-            f"🌍 <b>Select Country</b> (Plan: {plan.title()}):\n\nOr type country codes like: IN,US,GB",
+            f"🌍 <b>Select Country</b> (Plan: {plan.title()}):",
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(buttons)
         )
 
-    # Country selected - start checking
     elif data.startswith("country_"):
         parts = data.split("_")
         country = parts[1]
@@ -470,21 +548,12 @@ def handle_callback(update, context):
             text="⏳ Starting...",
             parse_mode=ParseMode.HTML
         )
-        process_files(context, chat_id, progress_msg, files_to_check)
-
-def filter_files(session, plan, country):
-    valid_files = session["valid_files"]
-    result = []
-    for txt_path, filename, info in valid_files:
-        if plan != "all" and info["plan"] and info["plan"] != plan:
-            continue
-        if country and country != "all" and info["country"] and info["country"] != country:
-            continue
-        result.append((txt_path, filename))
-    return result
+        threading.Thread(
+            target=process_files,
+            args=(context, chat_id, progress_msg, files_to_check)
+        ).start()
 
 def handle_message(update, context):
-    # Handle country code text input after plan selection
     chat_id = update.message.chat_id
     session = pending_sessions.get(chat_id)
     if not session or "selected_plan" not in session:
@@ -492,13 +561,13 @@ def handle_message(update, context):
 
     text = update.message.text.strip().upper()
     countries_input = [c.strip() for c in text.split(",")]
-
     plan = session.get("selected_plan", "all")
+
     files_to_check = []
     for txt_path, filename, info in session["valid_files"]:
         if plan != "all" and info["plan"] and info["plan"] != plan:
             continue
-        if info["country"] in countries_input or not countries_input:
+        if info["country"] in countries_input:
             files_to_check.append((txt_path, filename))
 
     update.message.reply_text(
@@ -512,7 +581,10 @@ def handle_message(update, context):
         text="⏳ Starting...",
         parse_mode=ParseMode.HTML
     )
-    process_files(context, chat_id, progress_msg, files_to_check)
+    threading.Thread(
+        target=process_files,
+        args=(context, chat_id, progress_msg, files_to_check)
+    ).start()
 
 updater = Updater(token=BOT_TOKEN)
 dp = updater.dispatcher
